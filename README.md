@@ -1,11 +1,32 @@
 # alzaker.nvda-addon 
- 
- A NVDA ScreenReader add-on reminds users of  Islamic remembrances in multiple ways, such as spoken, audio, and Windows notifications, randomly at a specified interval by the user.
 
-A new add-on for the NVDA screen reader, which randomly reminds the user of Islamic remembrances at a specified interval chosen by the user, in one of the following three ways:
+An NVDA ScreenReader add-on that reminds users of Islamic remembrances. Users can receive these reminders in multiple ways:
 
-Read the remembrance using the NVDA's default TTS.
-Speak the remembrance using a recorded audio files.
-Display the remembrance in Windows notifications.
-The user can also specify the interval between each remembrance from the add-on's settings.
+- Read the remembrance using NVDA's default TTS.
+- Speak the remembrance using recorded audio files.
+- Display the remembrance in Windows notifications.
 
+The reminders are presented randomly at an interval specified by the user. Additionally, users can trigger a random remembrance using the shortcut `nvda+alt+Z`. This shortcut can be changed via `nvda > Preferences > Input gestures > alzaker`.
+
+## Installation
+
+### Direct Installation (NVDA Version 2023.2+)
+
+- Navigate to the Add-on store.
+- Search for "alzaker" and install.
+
+### Manual Installation (For Older Versions)
+
+1. Visit the [Releases](https://github.com/ahmedthebest31/alzaker.nvda-addon/releases/) section and download the latest release.
+2. Open the downloaded add-on file and confirm the installation with "OK".
+3. NVDA will restart automatically. Enjoy.
+
+## 🤝 Contributing
+
+A huge shoutout to [mesteranas](https://github.com/mesteranas/) for their invaluable contributions to the development of this add-on.
+
+Contributions to this project are welcome! If you find a bug, have an idea for an improvement, or want to contribute in any other way, please feel free to open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [GNU General Public License, version 2]. See the [LICENSE](LICENSE) file for details.
