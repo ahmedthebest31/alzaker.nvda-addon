@@ -1,0 +1,64 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2023-10-26 15:19+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=cp1252\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:37
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:42
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:65
+msgid "alzaker"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:45
+msgid "type"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:47
+msgid "duration"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:49
+msgid "Notification"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:49
+msgid "sound"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:49
+msgid "speak"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:52
+msgid "donate"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:63
+msgid "currency converter"
+msgstr ""
+
+#:
+#: C:\Users\Mesteranas1\AppData\Roaming\nvda\addons\alzaker\globalPlugins\alzaker\__init__.py:70
+msgid "view random 1"
+msgstr ""
+
