@@ -2,11 +2,16 @@
 
 An NVDA ScreenReader add-on that reminds users of Islamic remembrances. Users can receive these reminders in multiple ways:
 
+## featchers
+
 - Read the remembrance using NVDA's default TTS.
 - Speak the remembrance using recorded audio files.
 - Display the remembrance in Windows notifications.
+- The reminders are presented randomly at an interval specified by the user from the setting page. 
+- Additionally, users can trigger a random remembrance using the shortcut `nvda+alt+Z`. 
+- and withh `nvda+alt+X` coppy the last spoken remembrances  to  system clipboard
+  This shortcuts can be changed via `nvda > Preferences > Input gestures > alzaker`.
 
-The reminders are presented randomly at an interval specified by the user. Additionally, users can trigger a random remembrance using the shortcut `nvda+alt+Z`. This shortcut can be changed via `nvda > Preferences > Input gestures > alzaker`.
 
 ## Installation
 
