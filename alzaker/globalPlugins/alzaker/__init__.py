@@ -109,7 +109,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     @script(gesture="kb:NVDA+alt+x")
     def script_toggle1(self, gesture):
-        if zkr is not "None":
+        if zkr != "None":
             if api.copyToClip(zkr):
                 ui.message(_("copied"))
 
