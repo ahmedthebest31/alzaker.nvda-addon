@@ -1,122 +1,174 @@
-import api
-from wx.adv import NotificationMessage as NM
-import webbrowser as web
 import os
-import nvwave
+import wave
+import threading
 from random import choice
-from gui import SettingsPanel, NVDASettingsDialog, guiHelper
-import config
-import wx
-import gui
-import globalPluginHandler
+from typing import Any, Optional
+
+import core
+import api
 import ui
-from threading import Thread
-import tones
-from time import sleep
+import config
+import nvwave
+import inputCore
+import globalPluginHandler
 from scriptHandler import script
+from wx.adv import NotificationMessage
 import addonHandler
+
+from .settings import AlzakerSettingsPanel
+
 addonHandler.initTranslation()
 
-roleSECTION = "alzaker"
+ROLE_SECTION = "alzaker"
 confspec = {
+    "enabled": "boolean(default=true)",
     "type": "integer(default=0)",
-    "d": "integer(default=1)"}
+    "interval": "integer(default=1)",
+    "volume": "integer(default=50)"
+}
 
-config.conf.spec[roleSECTION] = confspec
-path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "ad")
-zkr = "None"
-
-
-def alzaker():
-    global zkr
-    while True:
-        # Important note: if we put the while loop under the below condition, the loop starts if the reminder interval is not 0, but it'll continue running even if the value of the interval changes back to 0, thus; it results in the addon spamming with remembrances!
-        # Returnes if the interval is set to 0. The reason for this was explained in the above line.
-        if not config.conf[roleSECTION]["d"]:
-            return
-        sleep(config.conf[roleSECTION]["d"]*60)
-        if config.conf[roleSECTION]["type"] == 0:
-            with open(path + "/text.txt", "r", encoding="utf-8") as file:
-                ass = choice(file.read().split("\n"))
-                ui.message(ass)
-                zkr = ass
-        elif config.conf[roleSECTION]["type"] == 1:
-            nvwave.playWaveFile(os.path.join(
-                path, "sounds", choice(os.listdir(path + "/sounds"))), 1)
-        else:
-            with open(path + "/text.txt", "r", encoding="utf-8") as file:
-                ass = choice(file.read().split("\n"))
-                NM(_("alzaker"), ass).Show(50)
-                zkr = ass
-
-
-t = Thread(target=alzaker, daemon=True)
-t.start()
-
-
-class CRSettingsPanel(SettingsPanel):
-    title = _("alzaker")
-
-    def makeSettings(self, settingsSizer):
-        sHelper = guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
-        self.tlable = sHelper.addItem(wx.StaticText(
-            self, label=_("select reminder type"), name="ts"))
-        self.sou = sHelper.addItem(wx.Choice(self, name="ts"))
-        self.tlable1 = sHelper.addItem(wx.StaticText(self, label=_(
-            "select interval between each remembrances buy minutes"), name="ts1"))
-        self.sou1 = sHelper.addItem(
-            wx.SpinCtrl(self, name="ts1", min=0, max=500))
-        self.sou.Set([_("by TTS"), _("by audio files"),
-                     _("as a windows Notification")])
-        self.sou.SetSelection(config.conf[roleSECTION]["type"])
-        self.sou1.SetValue(config.conf[roleSECTION]["d"])
-        donate = sHelper.addItem(wx.Button(self, label=_("donate")))
-        donate.Bind(wx.EVT_BUTTON, self.ondonate)
-
-    def postInit(self):
-        self.sou.SetFocus()
-
-    def onSave(self):
-        ShouldCall = False
-        if config.conf[roleSECTION]["d"] == 0 and self.sou1.Value > 0:
-            ShouldCall = True
-        else:
-            ShouldCall = False
-        config.conf[roleSECTION]["type"] = self.sou.Selection
-        config.conf[roleSECTION]["d"] = self.sou1.Value
-        config.conf.save()
-        if ShouldCall:
-            t = Thread(target=alzaker, daemon=True)
-            t.start()
-
-    def ondonate(self, e):
-        ui.message("please wait")
-        web.open("https://www.paypal.me/ahmedthebest31")
+if config.conf is not None:
+    config.conf.spec[ROLE_SECTION] = confspec
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-    NVDASettingsDialog.categoryClasses.append(CRSettingsPanel)
-    scriptCategory = _("alzaker")
+    scriptCategory = "الذاكر"
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(*args, **kwargs)
+        
+        AlzakerSettingsPanel.main_plugin = self
+        from gui.settingsDialogs import NVDASettingsDialog
+        if AlzakerSettingsPanel not in NVDASettingsDialog.categoryClasses:
+            NVDASettingsDialog.categoryClasses.append(AlzakerSettingsPanel)
+
+        self.last_zkr: Optional[str] = None
+        self.active_player: Optional[nvwave.WavePlayer] = None
+        
+        self.resources_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "resources")
+        self.texts_cache: list[str] = []
+        self.audio_cache: list[str] = []
+        self._load_cache()
+
+        self.worker_thread: Optional[threading.Thread] = None
+        self.stop_event = threading.Event()
+        
+        self.restart_thread()
+
+    def _load_cache(self) -> None:
+        text_file = os.path.join(self.resources_path, "azkar.txt")
+        if os.path.exists(text_file):
+            try:
+                with open(text_file, "r", encoding="utf-8") as file:
+                    self.texts_cache = [line.strip() for line in file.readlines() if line.strip()]
+            except OSError:
+                pass
+
+        sounds_path = os.path.join(self.resources_path, "sounds")
+        if os.path.exists(sounds_path):
+            try:
+                self.audio_cache = [
+                    os.path.join(sounds_path, f) 
+                    for f in os.listdir(sounds_path) 
+                    if f.lower().endswith(".wav")
+                ]
+            except OSError:
+                pass
+
+    @property
+    def cfg(self) -> dict[str, Any]:
+        return config.conf[ROLE_SECTION]
+
+    def restart_thread(self) -> None:
+        self.stop_event.set()
+        if self.worker_thread and self.worker_thread.is_alive():
+            self.worker_thread.join(timeout=1.0)
+            
+        if self.cfg["enabled"] and self.cfg["interval"] > 0:
+            self.stop_event.clear()
+            self.worker_thread = threading.Thread(target=self._reminder_worker, daemon=True)
+            self.worker_thread.start()
+
+    def _reminder_worker(self) -> None:
+        while not self.stop_event.is_set():
+            wait_time = self.cfg["interval"] * 60
+            if self.stop_event.wait(wait_time):
+                break
+                
+            if not self.cfg["enabled"]:
+                break
+                
+            core.callLater(10, self.trigger_reminder)
+
+    def trigger_reminder(self) -> None:
+        if not self.texts_cache and self.cfg["type"] != 1:
+            return
+            
+        rem_type = self.cfg["type"]
+        
+        if rem_type == 0:
+            self.last_zkr = choice(self.texts_cache)
+            ui.message(self.last_zkr)
+            
+        elif rem_type == 1:
+            if self.audio_cache:
+                audio_file = choice(self.audio_cache)
+                self._play_independent_audio(audio_file)
+                
+        elif rem_type == 2:
+            self.last_zkr = choice(self.texts_cache)
+            NotificationMessage("الذاكر", self.last_zkr).Show(50)
+
+    def _play_independent_audio(self, filepath: str) -> None:
+        try:
+            with wave.open(str(filepath), "rb") as wf:
+                player = nvwave.WavePlayer(
+                    channels=wf.getnchannels(),
+                    samplesPerSec=wf.getframerate(),
+                    bitsPerSample=wf.getsampwidth() * 8
+                )
+                player.setVolume(all=self.cfg["volume"] / 100)
+                data = wf.readframes(wf.getnframes())
+                self.active_player = player
+
+            # الحل الهندسي: تشغيل بيانات الصوت في Thread فرعي لمنع الشلل
+            def feed_worker() -> None:
+                try:
+                    player.feed(data)
+                except Exception:
+                    pass
+
+            threading.Thread(target=feed_worker, daemon=True).start()
+        except Exception:
+            pass
 
     @script(gesture="kb:NVDA+alt+z")
-    def script_toggle(self, gesture):
-        global zkr
-        with open(path + "/text.txt", "r", encoding="utf-8") as file:
-            ass = choice(file.read().split("\n"))
-            ui.message(ass)
-            zkr = ass
-    script_toggle.__doc__ = _("say a random remembrances")
+    def script_force_reminder(self, gesture: inputCore.InputGesture) -> None:
+        if self.texts_cache:
+            self.last_zkr = choice(self.texts_cache)
+            ui.message(self.last_zkr)
+        else:
+            ui.message("ملف الأذكار غير موجود أو فارغ")
+    script_force_reminder.__doc__ = "نطق ذكر عشوائي فوراً"
 
     @script(gesture="kb:NVDA+alt+x")
-    def script_toggle1(self, gesture):
-        if zkr != "None":
-            if api.copyToClip(zkr):
-                ui.message(_("copied"))
-
+    def script_copy_last(self, gesture: inputCore.InputGesture) -> None:
+        if self.last_zkr:
+            if api.copyToClip(self.last_zkr):
+                ui.message("تم نسخ الذكر الأخير إلى الحافظة")
         else:
-            ui.message(
-                "Could not find any previously generated remembrance to copy!")
-    script_toggle1.__doc__ = _("coppy it to  system clipboard")
+            ui.message("لم يتم نطق أي ذكر لنسخه بعد")
+    script_copy_last.__doc__ = "نسخ الذكر الأخير إلى الحافظة"
 
-    def terminate(self):
-        NVDASettingsDialog.categoryClasses.remove(CRSettingsPanel)
+    def terminate(self) -> None:
+        self.stop_event.set()
+        if self.active_player:
+            self.active_player.stop()
+            
+        from gui.settingsDialogs import NVDASettingsDialog
+        try:
+            NVDASettingsDialog.categoryClasses.remove(AlzakerSettingsPanel)
+        except ValueError:
+            pass
+            
+        super().terminate()
