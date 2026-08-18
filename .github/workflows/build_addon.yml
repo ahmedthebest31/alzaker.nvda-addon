@@ -1,0 +1,86 @@
+name: Build addon
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install lint dependencies
+        run: uv sync --only-group lint
+      - name: Run ruff lint
+        run: uv run ruff check alzaker/ tests/
+      - name: Run ruff format check
+        run: uv run ruff format --check alzaker/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Install test dependencies
+        run: uv sync --only-group test
+      - name: Run tests
+        run: uv run pytest tests/ -v
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read manifest and build addon
+        id: build
+        run: |
+          name=$(python3 -c "import configparser; c=configparser.ConfigParser(); c.read('alzaker/manifest.ini'); print(c['DEFAULT']['name'])")
+          version=$(python3 -c "import configparser; c=configparser.ConfigParser(); c.read('alzaker/manifest.ini'); print(c['DEFAULT']['version'])")
+          addon_name="${name,,}_v${version}.nvda-addon"
+          echo "addon_name=${addon_name}" >> "$GITHUB_OUTPUT"
+          cd alzaker
+          zip -r "../${addon_name}" ./* -x '*.pyc' '*__pycache__*' '*.pytest_cache*' '.git*'
+          cd ..
+          sha256sum "${addon_name}" > "${addon_name}.sha256sum"
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: alzaker-addon
+          path: |
+            *.nvda-addon
+            *.sha256sum
+
+  release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download build artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: alzaker-addon
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            *.nvda-addon
+            *.sha256sum
